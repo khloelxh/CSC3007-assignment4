@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>Information Visualization - Assignment 4</title>
+
+    <style>
+        body {
+            font-family: "Lato", sans-serif
+        }
+
+        svg text {
+            font-size: small;
+            font-family: "Lato", sans-serif
+        }
+
+        .button-1 {
+            background-color: #EA4C89;
+            border-radius: 8px;
+            border-style: none;
+            box-sizing: border-box;
+            color: #FFFFFF;
+            cursor: pointer;
+            display: inline-block;
+            font-family: "Haas Grot Text R Web", "Helvetica Neue", Helvetica, Arial, sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            height: 40px;
+            line-height: 20px;
+            list-style: none;
+            margin: 0;
+            outline: none;
+            padding: 10px 16px;
+            position: relative;
+            text-align: center;
+            text-decoration: none;
+            transition: color 100ms;
+            vertical-align: baseline;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+
+        .button-1:hover,
+        .button-1:focus {
+            background-color: #F082AC;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Load CSS -->
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+    <!-- Load d3 script -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.25.6/d3-legend.js"></script>
+
+    <!-- Navbar -->
+    <div class="w3-top">
+        <div class="w3-bar w3-black w3-card">
+            <a class="w3-bar-item w3-button w3-padding-large w3-hide-medium w3-hide-large w3-right"
+                href="javascript:void(0)" onclick="myFunction()" title="Toggle Navigation Menu"><i
+                    class="fa fa-bars"></i></a>
+            <a href="#" class="w3-bar-item w3-button w3-padding-large">Force Network Diagram</a>
+        </div>
+    </div>
+    </div>
+    </div>
+
+    <!-- Page content -->
+    <div class="w3-content" style="max-width:2000px; margin-top:20px;">
+
+
+        <!-- The Start Section -->
+        <div class="w3-container w3-content w3-center w3-padding-64" style="max-width:1000px" id="band">
+            <h2 class="w3-wide">Force Network Diagram of Covid Clusters</h2>
+            <p class="w3-opacity"><i>Assignment 4</i></p>
+            <div class="w3-row w3-padding-32">
+
+                <!-- Initialise svg and tooltip -->
+                <button class="button-1" id="group1" role="button">Group by Gender</button>
+                <button class="button-1" id="group2" role="button">Group by Vaccination Status</button>
+                <svg></svg>
+                <div class="tooltip"></div>
+
+
+                <script>
+                    // Define width and height of svg
+                    let width = 1000, height = 800;
+
+                    let svg = d3.select("svg")
+                        .attr("viewBox", "0 0 " + width + " " + height)
+
+                    // Load external data
+                    Promise.all([d3.json("links-sample.json"), d3.json("cases-sample.json")]).then(data => {
+
+                        // Data preprocessing
+                        data[0].forEach(e => {
+                            e.source = e.infector;
+                            e.target = e.infectee;
+                        });
+
+                        console.log(data[0]); //links
+                        console.log(data[1]); //cases
+
+                        var links = data[0];
+                        var nodes = data[1];
+
+                        // Define tooltip
+                        var tooltip = d3.select(".tooltip")
+                            .style("background-color", "white")
+                            .style("border", "solid black 1px")
+                            .style("position", "absolute")
+                            .style("visibility", "hidden")
+                            .style("font-size", "11px")
+                            .style("color", "black")
+                            .style("padding", "10px");
+
+                        // Define svg
+                        let svg = d3.select("svg")
+                            .attr("width", width)
+                            .attr("height", height);
+
+                        // Define colorScale for Gender Status
+                        let colorScale = d3.scaleOrdinal()
+                            .domain(["male", "female"])
+                            .range(["lightblue", "hotpink"]);
+
+                        // Define colorScale for Vaccination Status
+                        let colorScaleVac = d3.scaleOrdinal()
+                            .domain(["Yes", "Partial", "No"])
+                            .range(["green", "orange", "red"]);
+
+
+                        let xPosition = d3.scaleOrdinal()
+                            .domain([0, 1, 2])
+                            .range([300, 200, 650]);
+
+                        // Defining and appending the Arrows
+                        svg.append("svg:defs").selectAll("marker")
+                            .data(["end"])
+                            .enter().append("svg:marker")
+                            .attr("id", String)
+                            .attr("viewBox", "0 -10 10 20")
+                            .attr("refX", 27)
+                            .attr("refY", -2.55)
+                            .attr("markerWidth", 20)
+                            .attr("markerHeight", 20)
+                            .attr("orient", "auto")
+                            .append("svg:path")
+                            .attr("d", "M0,-5L10,0L0,5")
+                            .style('stroke', 'none');
+
+                        // Defining the link path
+                        let linkpath = svg.append("g")
+                            .attr("id", "links")
+                            .selectAll("path")
+                            .data(data[0])
+                            .enter()
+                            .append("path")
+                            .attr("fill", "none")
+                            .attr("stroke", "black")
+                            //append the arrows
+                            .attr("marker-end", "url(#end)")
+                            .attr("stroke-width", "1px");
+
+                        // Defining and appending the nodes
+                        let node = svg.append("g")
+                            .attr("id", "nodes")
+                            .selectAll("circle")
+                            .data(data[1])
+                            .enter()
+                            .append("circle")
+                            .attr("r", 20)
+                            .style("fill", d => {
+                                if (d.gender == "male") return colorScale("male");
+                                else return colorScale("female");
+                            })
+                            .on("mouseenter", function (event, d) {
+                                tooltip
+                                    .transition()
+                                    .duration(100)
+                                    .style("visibility", "visible")
+                                    .style("opacity", 5)
+                                d3.select(this)
+                                    .style("stroke", "black")
+                                    .style("stroke-width", 3)
+                                    .style("opacity", 1)
+
+
+                                tooltip
+                                    .html("Id: " + d.id + "<br>" +
+                                        "Age: " + d.age + "<br>" +
+                                        "Nationality: " + d.nationality + "<br>" +
+                                        "Occupation: " + d.occupation + "<br>" +
+                                        "Organization: " + d.organization + "<br>" +
+                                        "Date: " + d.date + "<br>" +
+                                        "Vaccination: " + d.vaccinated + "<br>")
+                                    .style("top", (event.pageY) + "px")
+                                    .style("left", (event.pageX) + "px")
+
+
+                            })
+                            .on("mouseleave", function (event, d) {
+                                tooltip
+                                    .transition()
+                                    .duration(100)
+                                    .style("visibility", "hidden")
+                                d3.select(this)
+                                    .style("stroke", "none")
+                                    .style("opacity", 1)
+                            })
+                            .call(d3.drag()
+                                .on("start", dragstarted)
+                                .on("drag", dragged)
+                                .on("end", dragended));
+
+                        // Defining the legend for Gender
+                        var legend = d3.legendColor()
+                            .labels(["Male", "Female"])
+                            .scale(colorScale)
+                            .shapeWidth(10)
+                            .orient("vertical")
+                            .title("Gender");
+
+                        // Defining the legend for Vaccination Status
+                        var legendVac = d3.legendColor()
+                            .labels(["Vaccinated (2 doses)", "Partial (1 dose)", "No (0 doses)"])
+                            .scale(colorScaleVac)
+                            .shapeWidth(10)
+                            .orient("vertical")
+                            .title("Vaccination Status");
+
+                        //Appending the legend
+                        svg.append("g")
+                            .attr("transform", "translate(50,20)")
+                            .call(legend);
+
+
+                        //Appending the legend
+                        svg.append("g")
+                            .attr("transform", "translate(400,20)")
+                            .call(legendVac);
+
+                        // Adding the nodes
+                        var circles = node.append("circle")
+                            .attr("r", 10)
+                            .style("fill", d => colorScale(d.gender))
+
+                        // Adding the labels
+                        // let labels = svg.append("g")
+                        //     .attr("id", "texts")
+                        //     .selectAll("text")
+                        //     .data(data[1])
+                        //     .enter()
+                        //     .append("text")
+                        //     .text(function (d) { 
+                        // return d.id })
+                        //     .attr("font-size", "5px")
+                        //     .attr("pointer-events", "none");
+
+                        // Adding the gender icon images to the nodes
+                        let image = svg.append("g")
+                            .selectAll("image")
+                            .data(data[1])
+                            .enter()
+                            .append("image")
+                            .attr("xlink:href", function (d) {
+                                if (d.gender == "male") return "images/maleicon.png"; else return "images/femaleicon.png";
+                            })
+                            .attr("width", 20)
+                            .attr("height", 20)
+                            .attr("pointer-events", "none");
+
+
+                        // binding the data to the simulation
+                        let simulation = d3.forceSimulation(nodes)
+                            .nodes(data[1])
+                            .force("x", d3.forceX().strength(0.1).x(d => xPosition(d.class)))
+                            .force("y", d3.forceY().strength(0.1).y(height / 2))
+                            .force("charge", d3.forceManyBody().strength(-30))
+                            .force("collide", d3.forceCollide().strength(0.1).radius(40))
+                            .force("link", d3.forceLink(links).id(d => d.id).distance(50).strength(0.5))
+                            .on("tick", d => {
+                                node
+                                    .attr("cx", d => d.x)
+                                    .attr("cy", d => d.y);
+
+                                linkpath
+                                    // .attr("d", d => "M" + d.source.x + "," + d.source.y + " " + d.target.x + "," + d.target.y);
+                                    // making the arrows curved
+                                    .attr("d", d => {
+                                        var dx = d.target.x - d.source.x,
+                                            dy = d.target.y - d.source.y,
+                                            dr = Math.sqrt(dx * dx + dy * dy);
+                                        return "M" + d.source.x + "," + d.source.y + "A" +
+                                            dr + "," + dr + " 0 0,1 " + " " + d.target.x + "," + d.target.y
+                                    });
+
+                                // labels
+                                //     .attr("x", function (d) { return d.x - 12 })
+                                //     .attr("y", function (d) { return d.y + 15 })
+                                image
+                                    .attr("x", d => d.x - 10)
+                                    .attr("y", d => d.y - 10);
+                            });
+
+                        function dragstarted(event, d) {
+                            if (!event.active) simulation.alphaTarget(0.3).restart();
+                            d.fx = d.x;
+                            d.fy = d.y;
+                        }
+
+                        function dragged(event, d) {
+                            d.fx = event.x;
+                            d.fy = event.y;
+                        }
+
+                        function dragended(event, d) {
+                            if (!event.active) simulation.alphaTarget(0);
+                            d.fx = null;
+                            d.fy = null;
+                        }
+
+                        d3.select("#group1").on("click", function () {
+                            simulation
+                                .force(
+                                    "x",
+                                    d3
+                                        .forceX()
+                                        .strength(0.2)
+                                        .x((d) => {
+                                            if (d.gender == "male") return xPosition(0);
+                                            else if (d.gender == "female") return xPosition(2);
+                                        })
+                                )
+                                .force(
+                                    "y",
+                                    d3
+                                        .forceY()
+                                        .strength(0.2)
+                                        .y(height / 2)
+                                )
+                                .alphaTarget(0.3)
+                                .restart();
+
+                            d3.selectAll("circle")
+                                .style("fill", (d) => {
+                                    if (d.gender == "male") return colorScale("male");
+                                    else return colorScale("female");
+                                })
+                                .attr("stroke-width", 0);
+
+                            var legend = d3.select('.legend')
+                                .selectAll('.cell')
+                                .remove();
+
+                            svg.select(".legend")
+                                .call(legend);
+
+                        })
+
+
+                        d3.select("#group2").on("click", function () {
+                            simulation
+                                .force(
+                                    "x",
+                                    d3
+                                        .forceX()
+                                        .strength(0.2)
+                                        .x((d) => {
+                                            if (d.vaccinated.includes("yes")) return xPosition(0);
+                                            else if (d.vaccinated.includes("no")) return xPosition(2);
+                                            else return xPosition(1);
+                                        })
+                                )
+                                .force(
+                                    "y",
+                                    d3
+                                        .forceY()
+                                        .strength(0.2)
+                                        .y(height / 2)
+                                )
+                                .alphaTarget(0.3)
+                                .restart();
+
+                            d3.selectAll("circle")
+                                .style("fill", (d) => {
+                                    if (d.vaccinated.includes("yes")) return colorScaleVac(0);
+                                    else if (d.vaccinated.includes("no")) return colorScaleVac(2);
+                                    else return colorScaleVac(1);
+                                })
+                                .attr("stroke-width", 0);
+
+                        })
+
+                        // // When the button is changed, run the updateChart function
+                        // d3.select("#group1").on("change", function (event, d) {
+                        //     legend.exit().remove();
+                        //     //Appending the legend
+                        //     svg.append("g")
+                        //         .attr("transform", "translate(50,20)")
+                        //         .call(legend);
+                        // })
+                        // d3.select("#group2").on("change", function (event, d) {
+                        //     legend.exit().remove();
+                        //     //Appending the legend
+                        //     svg.append("g")
+                        //         .attr("transform", "translate(50,20)")
+                        //         .call(legendVac);
+                        // })
+
+
+
+                    })
+                </script>
+                </div></div>
+
+
+</body>
+
+<!-- Footer -->
+<footer class="w3-container w3-padding-100 w3-center w3-opacity w3-light-grey w3-small">
+    <p>Khloe Lim Xin Hui 1901865</p>
+    <p class="w3-small">GitHub link <a href="https://github.com/khloelxh/CSC3007-assignment4/" target="_blank">here</a>
+    </p>
+</footer>
+
+</html>
